@@ -12,6 +12,8 @@ OceanAI is a web application that leverages the generative power of Google's Gem
 Once completed and deployed, the application will be accessible at:
 **[https://ocean.svastiindustries.com](https://ocean.svastiindustries.com)**
 
+![alt text](image.png)
+
 ## Features
 
 -   **Conversational AI:** Engage in a conversation with the AI to refine the presentation topic and requirements.
