@@ -10,7 +10,7 @@ OceanAI is a web application that leverages the generative power of Google's Gem
 ## Live Demo
 
 Once completed and deployed, the application will be accessible at:
-**[https://ocean.svastiindustries.com](https://ocean.svastiindustries.com)**
+**[https://ocean-ai-ppt-generator.vercel.app/](https://ocean-ai-ppt-generator.vercel.app/)**
 
 ![alt text](image.png)
 
