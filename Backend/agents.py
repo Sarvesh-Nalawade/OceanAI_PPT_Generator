@@ -1,4 +1,4 @@
-# from IPython.display import Markdown
+import os
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
@@ -7,19 +7,22 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
-load_dotenv()
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+DOTENV_PATH = os.path.join(SCRIPT_DIR, '.env')
+load_dotenv(dotenv_path=DOTENV_PATH)
 
 # llm = ChatGoogleGenerativeAI(model="models/gemini-3-pro-preview", temperature=0.7)
 llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-pro", temperature=0.7)
 
-PPT_FILE_NAME = "generated_ppt_code.py"
-
+PPT_FILE_NAME = os.path.join(SCRIPT_DIR, "generated_ppt_code.py")
 
 # ## PPT code gen:
 
+CONTEXT_DOCS_PATH = os.path.join(SCRIPT_DIR, "pptx_docs", "merged_docs_edit.md")
+with open(CONTEXT_DOCS_PATH, "r") as f:
+    CONTEXT_DOCS = f.read()
 
-CONTEXT_DOCS = open("./pptx_docs/merged_docs_edit.md", "r").read()
-CONTEXT_DOCS[:75]
+# CONTEXT_DOCS[:75]
 
 ppt_generate_template = ChatPromptTemplate.from_messages([
     ("system", """You are an assistant that generates Python code using the python-pptx library.

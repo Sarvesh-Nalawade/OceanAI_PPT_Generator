@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PdfViewer from "../components/PDFviewer";
+import ErrorDisplay from "../components/ErrorDisplay";
 
 
 type JsonResponse = {
@@ -115,11 +116,10 @@ export default function Home(): JSX.Element {
           </button>
         </div>
 
-        {error && <div className="error">{error}</div>}
+        {error && <ErrorDisplay message={error} />}
 
         {pptUrl && (
           <div className="section">
-            <h3>Download PPTX</h3>
             <a className="link" href={pptUrl} download={`presentation-${Date.now()}.pptx`}>
               Download PPTX
             </a>

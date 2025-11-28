@@ -1,265 +1,304 @@
-# main_script.py
-
-import os
+import collections.abc
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION
 from pptx.chart.data import CategoryChartData, ChartData
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION
 from pptx.dml.color import RGBColor
 
-def create_title_slide(prs):
-    """Creates the title slide (Slide 1)."""
+def create_transportation_presentation():
+    """
+    Generates a PowerPoint presentation about the improvement of human transportation
+    in the past 100 years using the python-pptx library.
+    """
+    # --- Create Presentation ---
+    prs = Presentation()
+    # Use a 16:9 aspect ratio
+    prs.slide_width = Inches(16)
+    prs.slide_height = Inches(9)
+
+    # --- Slide 1: Title Slide ---
+    slide_layout = prs.slide_layouts[0]  # Title slide layout
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    subtitle = slide.placeholders[1]
+    title.text = "The Revolution in Motion"
+    subtitle.text = "Human Transportation Over the Last 100 Years"
+
+    # --- Slide 2: Introduction ---
+    slide_layout = prs.slide_layouts[1]  # Title and Content layout
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "From Horsepower to Hypersonic"
+    body = slide.shapes.placeholders[1]
+    tf = body.text_frame
+    tf.text = "The 20th and 21st centuries witnessed an unprecedented leap in mobility."
+    
+    p = tf.add_paragraph()
+    p.text = "This presentation explores the key advancements in:"
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "Land: The rise of the automobile and high-speed rail."
+    p.level = 2
+    
+    p = tf.add_paragraph()
+    p.text = "Sea: From ocean liners to massive cargo ships."
+    p.level = 2
+    
+    p = tf.add_paragraph()
+    p.text = "Air: The dawn of the jet age and accessible global travel."
+    p.level = 2
+
+    # --- Slide 3: The Age of the Automobile ---
+    slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "The Age of the Automobile"
+    body = slide.shapes.placeholders[1]
+    tf = body.text_frame
+    tf.text = "The car transformed from a luxury item to a daily necessity."
+    
+    p = tf.add_paragraph()
+    p.text = "Mass Production: Henry Ford's Model T made cars affordable."
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "Infrastructure: Development of extensive highway systems."
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "Modern Era: Focus on safety, efficiency, and electric power."
+    p.level = 1
+
+    # Image Placeholder for Slide 3
+    left = Inches(8)
+    top = Inches(4)
+    width = Inches(7)
+    height = Inches(3.5)
+    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
+    shape.text = "Image Placeholder:\nA 1920s Ford Model T next to a modern electric car."
+    shape.text_frame.paragraphs[0].font.size = Pt(14)
+    shape.text_frame.paragraphs[0].font.italic = True
+    
+    # --- Slide 4: Revolution on Rails ---
+    slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "Revolution on Rails"
+    body = slide.shapes.placeholders[1]
+    tf = body.text_frame
+    tf.text = "Rail travel evolved from steam-powered workhorses to sleek, high-speed networks."
+    
+    p = tf.add_paragraph()
+    p.text = "Steam to Diesel-Electric: Increased power and efficiency in the mid-20th century."
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "High-Speed Rail: Japan's Shinkansen (1964) pioneered travel over 200 km/h."
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "Magnetic Levitation (Maglev): Pushing speeds beyond 600 km/h."
+    p.level = 1
+
+    # Image Placeholder for Slide 4
+    left = Inches(8)
+    top = Inches(4)
+    width = Inches(7)
+    height = Inches(3.5)
+    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
+    shape.text = "Image Placeholder:\nA classic steam locomotive contrasted with a modern Maglev train."
+    shape.text_frame.paragraphs[0].font.size = Pt(14)
+    shape.text_frame.paragraphs[0].font.italic = True
+    
+    # --- Slide 5: Table of Speed ---
+    slide_layout = prs.slide_layouts[5]  # Title Only layout
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "A Century of Speed: A Comparison"
+    
+    rows, cols = 5, 4
+    left = Inches(1.5)
+    top = Inches(2.0)
+    width = Inches(13.0)
+    height = Inches(4.0)
+    
+    table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)
+    table = table_shape.table
+    
+    # Set column widths
+    table.columns[0].width = Inches(3.0)
+    table.columns[1].width = Inches(3.5)
+    table.columns[2].width = Inches(3.5)
+    table.columns[3].width = Inches(3.0)
+    
+    # Write headers
+    headers = ['Mode of Transport', '1920s Top Speed (approx.)', '2020s Top Speed (approx.)', 'NY to LA Travel Time']
+    for i, header in enumerate(headers):
+        cell = table.cell(0, i)
+        cell.text = header
+        cell.text_frame.paragraphs[0].font.bold = True
+        
+    # Write data
+    data = [
+        ["Automobile", "100 km/h", "400+ km/h (Hypercar)", "~4-5 days"],
+        ["Train", "160 km/h", "600+ km/h (Maglev)", "~2-3 days"],
+        ["Ship", "55 km/h", "65 km/h (Cruise Ship)", "~2 weeks (by sea)"],
+        ["Airplane", "240 km/h", "950 km/h (Airliner)", "~5-6 hours"]
+    ]
+    for r, row_data in enumerate(data):
+        for c, cell_data in enumerate(row_data):
+            table.cell(r + 1, c).text = cell_data
+
+    # --- Slide 6: Conquering the Skies ---
+    slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "Conquering the Skies"
+    body = slide.shapes.placeholders[1]
+    tf = body.text_frame
+    tf.text = "Aviation matured from a dangerous experiment to the backbone of global travel."
+    p = tf.add_paragraph()
+    p.text = "The Golden Age (1920s-30s): Rapid innovation in aircraft design."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "The Jet Age (1950s): Commercial jets cut travel times in half."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "Mass Air Travel: Deregulation and larger aircraft made flying accessible."
+    p.level = 1
+    
+    # --- Slide 7: Bar Chart - Growth of Air Travel ---
+    slide_layout = prs.slide_layouts[5]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "Explosive Growth in Global Air Travel"
+    
+    chart_data = CategoryChartData()
+    chart_data.categories = ['1950', '1970', '1990', '2010', '2019']
+    chart_data.add_series('Passengers (in millions)', (31, 383, 1270, 2710, 4540))
+    
+    x, y, cx, cy = Inches(2), Inches(2), Inches(12), Inches(5.5)
+    graphic_frame = slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data
+    )
+    chart = graphic_frame.chart
+    
+    chart.has_legend = False
+    
+    category_axis = chart.category_axis
+    category_axis.tick_labels.font.size = Pt(12)
+
+    value_axis = chart.value_axis
+    value_axis.has_major_gridlines = True
+    value_axis.tick_labels.font.size = Pt(12)
+    
+    value_axis.has_title = True
+    value_axis.axis_title.text_frame.text = "Passengers (in millions)"
+
+    # --- Slide 8: Pie Chart - Modal Share of Transportation ---
+    slide_layout = prs.slide_layouts[5]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "How We Travel Today: Passenger Modal Share (Typical)"
+    
+    chart_data = ChartData()
+    chart_data.categories = ['Personal Vehicle', 'Air Travel', 'Rail', 'Bus/Coach', 'Other']
+    chart_data.add_series('Modal Share', (0.85, 0.08, 0.02, 0.03, 0.02))
+    
+    x, y, cx, cy = Inches(4), Inches(1.5), Inches(8), Inches(6)
+    graphic_frame = slide.shapes.add_chart(
+        XL_CHART_TYPE.PIE, x, y, cx, cy, chart_data
+    )
+    chart = graphic_frame.chart
+    
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+    chart.legend.include_in_layout = False
+    chart.plots[0].has_data_labels = True
+    data_labels = chart.plots[0].data_labels
+    data_labels.number_format = '0%'
+    data_labels.position = XL_LABEL_POSITION.BEST_FIT
+    data_labels.font.size = Pt(14)
+    data_labels.font.bold = True
+    
+    # --- Slide 9: The Final Frontier: Space Travel ---
+    slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "The Final Frontier: Space Travel"
+    body = slide.shapes.placeholders[1]
+    tf = body.text_frame
+    tf.text = "The ultimate expression of transportation advancement."
+    p = tf.add_paragraph()
+    p.text = "The Space Race: Apollo missions proved interplanetary travel was possible."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "Reusable Rockets: Companies like SpaceX have dramatically reduced launch costs."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "Commercialization: The dawn of space tourism and private space stations."
+    p.level = 1
+
+    # Image Placeholder for Slide 9
+    left = Inches(8)
+    top = Inches(4)
+    width = Inches(7)
+    height = Inches(3.5)
+    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
+    shape.text = "Image Placeholder:\nThe Saturn V rocket next to a reusable SpaceX Falcon 9."
+    shape.text_frame.paragraphs[0].font.size = Pt(14)
+    shape.text_frame.paragraphs[0].font.italic = True
+    
+    # --- Slide 10: The Future of Transportation ---
+    slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "The Future of Transportation"
+    body = slide.shapes.placeholders[1]
+    tf = body.text_frame
+    tf.text = "Innovation continues to accelerate, promising an even more connected future."
+    p = tf.add_paragraph()
+    p.text = "Autonomous Vehicles: Self-driving cars, trucks, and drones."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "Hyperloop: High-speed travel in low-pressure tubes."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "Urban Air Mobility (UAM): Electric Vertical Take-Off and Landing (eVTOL) aircraft."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "Sustainable Fuels: Hydrogen and advanced biofuels for planes and ships."
+    p.level = 1
+    
+    # --- Slide 11: Conclusion ---
+    slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "Conclusion"
+    body = slide.shapes.placeholders[1]
+    tf = body.text_frame
+    tf.text = "Over the past century, transportation has evolved at an astonishing pace."
+    p = tf.add_paragraph()
+    p.text = "Speed, safety, and accessibility have improved beyond imagination."
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "The journey continues, driven by technology and the human desire to explore."
+    p.level = 1
+    
+    # --- Slide 12: Thank You ---
     slide_layout = prs.slide_layouts[0]
     slide = prs.slides.add_slide(slide_layout)
     title = slide.shapes.title
     subtitle = slide.placeholders[1]
+    title.text = "Thank You"
+    subtitle.text = "Questions?"
 
-    title.text = "The Evolution of Programming Languages"
-    subtitle.text = "A Look at Popularity and Market Share of Java, Python, JavaScript, and C++"
-
-def create_intro_slide(prs):
-    """Creates the introduction slide (Slide 2)."""
-    slide_layout = prs.slide_layouts[1]
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    body = slide.placeholders[1]
-
-    title.text = "Introduction: The Four Titans"
-    tf = body.text_frame
-    tf.text = "A brief overview of the languages that have shaped modern software development:"
-
-    p1 = tf.add_paragraph(); p1.text = "Java: The enterprise-level, object-oriented language known for its platform independence."; p1.level = 1
-    p2 = tf.add_paragraph(); p2.text = "Python: A high-level, versatile language praised for its simplicity and readability."; p2.level = 1
-    p3 = tf.add_paragraph(); p3.text = "JavaScript: The ubiquitous language of the web, essential for front-end development."; p3.level = 1
-    p4 = tf.add_paragraph(); p4.text = "C++: A powerful, high-performance language used for systems programming and gaming."; p4.level = 1
-
-    # Add image placeholder
-    left, top, width, height = Inches(10.5), Inches(2.5), Inches(4.5), Inches(4)
-    slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
-    
-    # Add caption for the placeholder
-    caption_box = slide.shapes.add_textbox(left, top + height, width, Inches(0.5))
-    caption_p = caption_box.text_frame.paragraphs[0]
-    caption_p.text = "Image: Logos of Java, Python, JavaScript, and C++"
-    caption_p.font.size = Pt(10)
-    caption_p.font.italic = True
-
-def create_java_slide(prs):
-    """Creates the 'Java's Journey' slide (Slide 3)."""
-    slide_layout = prs.slide_layouts[1]
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    body = slide.placeholders[1]
-
-    title.text = "Java's Journey: The Enterprise Workhorse"
-    tf = body.text_frame
-    tf.text = "Dominance in Enterprise Applications"
-
-    p1 = tf.add_paragraph(); p1.text = "\"Write Once, Run Anywhere\" philosophy powered by the JVM."; p1.level = 1
-    p2 = tf.add_paragraph(); p2.text = "Backbone of large-scale corporate systems and Android mobile development."; p2.level = 1
-    p3 = tf.add_paragraph(); p3.text = "Known for stability, security, and a massive ecosystem (Spring, Maven)."; p3.level = 1
-    p4 = tf.add_paragraph(); p4.text = "While its growth has slowed, it remains a critical and high-demand skill."; p4.level = 1
-    
-    # Add image placeholder
-    left, top, width, height = Inches(1), Inches(5.5), Inches(4), Inches(3)
-    slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
-    
-    # Add caption
-    caption_box = slide.shapes.add_textbox(left, top + height, width, Inches(0.5))
-    caption_p = caption_box.text_frame.paragraphs[0]
-    caption_p.text = "Image: Diagram of the Java Virtual Machine (JVM) architecture."
-    caption_p.font.size = Pt(10)
-    caption_p.font.italic = True
-
-def create_python_slide_with_pie_chart(prs):
-    """Creates the 'Rise of Python' slide with a Pie Chart (Slide 4)."""
-    slide_layout = prs.slide_layouts[5]  # Title Only layout
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    title.text = "The Rise of Python: The Versatile Powerhouse"
-
-    # Add text content in a textbox
-    left_text, top_text, width_text, height_text = Inches(0.5), Inches(1.5), Inches(7), Inches(5)
-    txBox = slide.shapes.add_textbox(left_text, top_text, width_text, height_text)
-    tf = txBox.text_frame
-    tf.text = "From scripting to science, Python's growth is unparalleled:"
-    p1 = tf.add_paragraph(); p1.text = "Simplicity and readability attract beginners and experts alike."; p1.level = 1
-    p2 = tf.add_paragraph(); p2.text = "Dominant force in Data Science, Machine Learning, and AI."; p2.level = 1
-    p3 = tf.add_paragraph(); p3.text = "Strong web frameworks like Django and Flask."; p3.level = 1
-    p4 = tf.add_paragraph(); p4.text = "Vast library support (NumPy, Pandas, TensorFlow)."; p4.level = 1
-
-    # Add Pie Chart
-    chart_data = ChartData()
-    chart_data.categories = ['Data Science/ML', 'Web Development', 'Automation', 'Other']
-    chart_data.add_series('Primary Use Cases', (45, 25, 20, 10))
-
-    x, y, cx, cy = Inches(8), Inches(2), Inches(7), Inches(5)
-    graphic_frame = slide.shapes.add_chart(XL_CHART_TYPE.PIE, x, y, cx, cy, chart_data)
-    chart = graphic_frame.chart
-
-    chart.has_legend = True
-    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-    chart.legend.include_in_layout = False
-
-    chart.plots[0].has_data_labels = True
-    data_labels = chart.plots[0].data_labels
-    data_labels.number_format = '0"%"'
-    data_labels.position = XL_LABEL_POSITION.OUTSIDE_END
-    data_labels.font.size = Pt(14)
-    chart.chart_title.text_frame.text = "Python's Primary Use Cases (2024)"
-
-def create_javascript_slide_with_table(prs):
-    """Creates the 'JavaScript's Dominance' slide with a Table (Slide 5)."""
-    slide_layout = prs.slide_layouts[1]
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    body = slide.placeholders[1]
-
-    title.text = "JavaScript's Dominance: King of the Web"
-    tf = body.text_frame
-    tf.text = "The language that powers virtually every modern website:"
-    p1 = tf.add_paragraph(); p1.text = "Evolved from a browser script to a full-stack solution with Node.js."; p1.level = 1
-    p2 = tf.add_paragraph(); p2.text = "Vibrant ecosystem of frameworks like React, Angular, and Vue.js."; p2.level = 1
-
-    # Add Table
-    rows, cols = 4, 3
-    left, top, width, height = Inches(1.5), Inches(4.0), Inches(13.0), Inches(3.0)
-    table = slide.shapes.add_table(rows, cols, left, top, width, height).table
-
-    # Set column widths and write headings
-    table.columns[0].width, table.columns[1].width, table.columns[2].width = Inches(3.0), Inches(3.0), Inches(7.0)
-    table.cell(0, 0).text, table.cell(0, 1).text, table.cell(0, 2).text = 'Framework', 'Creator / Backer', 'Key Feature'
-
-    # Populate table data
-    frameworks = [
-        ('React', 'Facebook', 'Component-based UI library, virtual DOM for performance.'),
-        ('Angular', 'Google', 'Comprehensive MVC framework with two-way data binding.'),
-        ('Vue.js', 'Evan You', 'Progressive framework, easy to learn and integrate.')
-    ]
-    for i, (fw, creator, feature) in enumerate(frameworks):
-        table.cell(i + 1, 0).text, table.cell(i + 1, 1).text, table.cell(i + 1, 2).text = fw, creator, feature
-
-    # Format table headers
-    for i in range(cols):
-        for para in table.cell(0, i).text_frame.paragraphs:
-            para.font.bold = True
-
-def create_cpp_slide(prs):
-    """Creates 'The Legacy of C++' slide (Slide 6)."""
-    slide_layout = prs.slide_layouts[1]
-    slide = prs.slides.add_slide(slide_layout)
-    title, body = slide.shapes.title, slide.placeholders[1]
-    
-    title.text = "The Legacy of C++: The Performance King"
-    tf = body.text_frame
-    tf.text = "When speed and control are paramount, C++ remains undefeated:"
-    p1 = tf.add_paragraph(); p1.text = "Direct memory management provides unparalleled performance."; p1.level = 1
-    p2 = tf.add_paragraph(); p2.text = "The language of choice for AAA game engines, HFT, and embedded systems."; p2.level = 1
-    p3 = tf.add_paragraph(); p3.text = "Modern C++ (C++11 and beyond) adds features for safety and ease of use."; p3.level = 1
-
-    # Add image placeholder
-    left, top, width, height = Inches(10.5), Inches(2.5), Inches(4.5), Inches(4)
-    slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
-    
-    # Add caption
-    caption_box = slide.shapes.add_textbox(left, top + height, width, Inches(0.5))
-    caption_p = caption_box.text_frame.paragraphs[0]
-    caption_p.text = "Image: Screenshot of C++ code for a high-performance application."
-    caption_p.font.size = Pt(10)
-    caption_p.font.italic = True
-
-def create_line_chart_slide(prs):
-    """Creates the 'Comparative Popularity' slide with a Line Chart (Slide 7)."""
-    slide_layout = prs.slide_layouts[5]
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    title.text = "Comparative Popularity Trends (TIOBE Index-like Data)"
-
-    chart_data = CategoryChartData()
-    chart_data.categories = ['2004', '2009', '2014', '2019', '2024']
-    chart_data.add_series('Java',       (20.7, 17.3, 16.5, 16.8, 10.4))
-    chart_data.add_series('Python',     (2.6,  4.5,  5.8,  9.3,  15.4))
-    chart_data.add_series('JavaScript', (1.5,  2.8,  4.2,  7.1,  8.5))
-    chart_data.add_series('C++',        (12.2, 10.1, 7.4,  8.2,  11.9))
-
-    x, y, cx, cy = Inches(1), Inches(1.5), Inches(14), Inches(6.5)
-    graphic_frame = slide.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data)
-    chart = graphic_frame.chart
-
-    chart.has_legend = True
-    chart.legend.position = XL_LEGEND_POSITION.TOP
-    chart.value_axis.has_major_gridlines = True
-    chart.value_axis.tick_labels.number_format = '0"%"'
-    chart.category_axis.tick_labels.font.size = Pt(12)
-
-def create_bar_chart_slide(prs):
-    """Creates the 'Current Market Share' slide with a Bar Chart (Slide 8)."""
-    slide_layout = prs.slide_layouts[5]
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    title.text = "Current Market Share & Demand (2024)"
-
-    chart_data = CategoryChartData()
-    chart_data.categories = ['Java', 'Python', 'JavaScript', 'C++']
-    chart_data.add_series('Stack Overflow Survey %', (30.5, 43.8, 63.6, 20.5))
-
-    x, y, cx, cy = Inches(2), Inches(1.5), Inches(12), Inches(6.5)
-    graphic_frame = slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data)
-    chart = graphic_frame.chart
-
-    chart.has_legend = False
-    plot = chart.plots[0]
-    plot.has_data_labels = True
-    data_labels = plot.data_labels
-    data_labels.number_format = '0.0"%"'
-    data_labels.position = XL_LABEL_POSITION.OUTSIDE_END
-    
-    chart.value_axis.maximum_scale = 70.0
-    chart.category_axis.tick_labels.font.size = Pt(14)
-
-def create_conclusion_slide(prs):
-    """Creates the conclusion slide (Slide 9)."""
-    slide_layout = prs.slide_layouts[1]
-    slide = prs.slides.add_slide(slide_layout)
-    title, body = slide.shapes.title, slide.placeholders[1]
-
-    title.text = "Conclusion and Future Outlook"
-    tf = body.text_frame
-    tf.text = "Each language has a distinct and vital role in the tech ecosystem:"
-    
-    p1 = tf.add_paragraph(); p1.text = "Java remains the bedrock of enterprise, though facing competition."; p1.level = 1
-    p2 = tf.add_paragraph(); p2.text = "Python's growth trajectory in AI/ML shows no signs of slowing."; p2.level = 1
-    p3 = tf.add_paragraph(); p3.text = "JavaScript is irreplaceable on the web, with its ecosystem constantly evolving."; p3.level = 1
-    p4 = tf.add_paragraph(); p4.text = "C++ continues to be the undisputed champion for performance-critical applications."; p4.level = 1
-    
-    p5 = tf.add_paragraph()
-    p5.text = "The future is polyglot: developers will increasingly need multiple languages to succeed."
-    p5.level = 0
-    p5.font.bold = True
-
-def main():
-    """Main function to generate the presentation."""
-    prs = Presentation()
-    # Use 16:9 aspect ratio
-    prs.slide_width = Inches(16)
-    prs.slide_height = Inches(9)
-
-    # Create all slides
-    create_title_slide(prs)
-    create_intro_slide(prs)
-    create_java_slide(prs)
-    create_python_slide_with_pie_chart(prs)
-    create_javascript_slide_with_table(prs)
-    create_cpp_slide(prs)
-    create_line_chart_slide(prs)
-    create_bar_chart_slide(prs)
-    create_conclusion_slide(prs)
-
-    # Save the presentation
+    # --- Save Presentation ---
     output_filename = 'output.pptx'
     prs.save(output_filename)
     print(f"Presentation '{output_filename}' created successfully.")
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    create_transportation_presentation()

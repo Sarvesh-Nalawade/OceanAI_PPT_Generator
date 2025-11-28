@@ -93,3 +93,32 @@ h1 {
 }
 
 .link:hover { text-decoration: underline; }
+
+.error-box {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 8px;
+    background-color: #2D1A1A;
+    border: 1px solid #F87171;
+    color: #F87171;
+}
+
+.error-box-title {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.error-box-title svg {
+    margin-right: 8px;
+    width: 20px;
+    height: 20px;
+}
+
+.error-box-message {
+    margin-top: 8px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

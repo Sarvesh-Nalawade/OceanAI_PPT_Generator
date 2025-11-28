@@ -4,3 +4,6 @@ langchain
 langchain_community
 # langchain_openai
 langchain_google_genai
+fastapi
+uvicorn
+python-multipart
