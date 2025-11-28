@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PPT_FILE_PATH = "output.pptx"
+PPT_FILE_PATH = "/tmp/output.pptx"
 
 @app.post("/generate")
 async def generate_presentation(topic: str = Form(...)):
