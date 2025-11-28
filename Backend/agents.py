@@ -14,7 +14,7 @@ load_dotenv(dotenv_path=DOTENV_PATH)
 # llm = ChatGoogleGenerativeAI(model="models/gemini-3-pro-preview", temperature=0.7)
 llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-pro", temperature=0.7)
 
-PPT_FILE_NAME = os.path.join(SCRIPT_DIR, "generated_ppt_code.py")
+PPT_FILE_NAME = "/tmp/generated_ppt_code.py"
 
 # ## PPT code gen:
 
@@ -44,8 +44,8 @@ ppt_generate_template = ChatPromptTemplate.from_messages([
     5. Structure code cleanly:
         - Import all needed modules.
         - Create presentation, slides, chart data, tables, and placeholders.
-        - Save output as `output.pptx`.
-        - After saving, print "Presentation 'output.pptx' created successfully."
+        - Save output as `/tmp/output.pptx`.
+        - After saving, print "Presentation '/tmp/output.pptx' created successfully."
 
     # Context
     {context_docs_dump}
