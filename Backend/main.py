@@ -12,6 +12,7 @@ origins = [
     "http://localhost:3000",  # Allow frontend origin
     "https://ocean-ai-ppt-generator-5883.vercel.app",
     "https://ocean-ai-ppt-generator-tbhc.vercel.app",
+    "https://ocean-ai-ppt-generator.vercel.app/",
 ]
 
 app.add_middleware(
