@@ -1,82 +1,117 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import PdfViewer from "../components/PDFviewer";
 import ErrorDisplay from "../components/ErrorDisplay";
 
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
 
-type JsonResponse = {
+type BackendResponse = {
+  status: boolean;
+  content: string;
+  file_path?: string;
   pdfUrl?: string;
   pptUrl?: string;
-  [k: string]: unknown;
 };
 
 export default function Home(): JSX.Element {
-  const [topic, setTopic] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentInput, setCurrentInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pptUrl, setPptUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-  const endpoint = BACKEND_URL ? `${BACKEND_URL}/generate` : "/api/generate";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
-  async function handleGenerate() {
-    setError(null);
-    setPdfUrl(null);
-    setPptUrl(null);
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    if (!topic.trim()) {
-      setError("Please enter a topic.");
+  async function handleSendMessage() {
+    if (!currentInput.trim()) {
+      setError("Please enter a message.");
       return;
     }
 
+    const userMessage: Message = {
+      role: "user",
+      content: currentInput,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    const userInput = currentInput; // Store before clearing
+    setCurrentInput("");
     setLoading(true);
+    setError(null);
+
+    // Don't add generating message - we'll show loading spinner instead
+
     try {
       const fd = new FormData();
-      fd.append("topic", topic);
+      fd.append("topic", userInput);
 
-      const res = await fetch(endpoint, {
+      const res = await fetch(`${BACKEND_URL}/generate`, {
         method: "POST",
         body: fd,
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Server error: ${res.status} ${text}`);
-      }
-
       const contentType = res.headers.get("content-type") || "";
 
-      // JSON response with URLs
-      if (contentType.includes("application/json")) {
-        const json = (await res.json()) as JsonResponse;
-        if (json.pdfUrl) setPdfUrl(json.pdfUrl);
-        if (json.pptUrl) setPptUrl(json.pptUrl);
-        if (!json.pdfUrl && !json.pptUrl) setError("Backend returned JSON but no file URLs were found.");
-      } else {
-        // Binary response (pdf or pptx)
-        const buffer = await res.arrayBuffer();
+      // Check if response is a file (PPTX)
+      if (
+        contentType.includes("presentation") ||
+        contentType.includes("powerpoint") ||
+        contentType.includes("application/vnd.openxmlformats-officedocument.presentationml.presentation")
+      ) {
+        const successMessage: Message = {
+          role: "assistant",
+          content: "✅ Your presentation has been generated successfully! You can download it below.",
+        };
+        setMessages((prev) => [...prev, successMessage]);
 
-        if (contentType.includes("application/pdf")) {
-          const blob = new Blob([buffer], { type: "application/pdf" });
-          setPdfUrl(URL.createObjectURL(blob));
-        } else if (
-          contentType.includes("presentation") ||
-          contentType.includes("powerpoint") ||
-          contentType.includes(
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-          )
-        ) {
-          const blob = new Blob([buffer], {
-            type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-          });
-          setPptUrl(URL.createObjectURL(blob));
-          setError("Received PPTX. If you want a PDF preview, have the backend also return a PDF or pdfUrl.");
-        } else {
-          // fallback — make blob, offer download
-          const blob = new Blob([buffer]);
-          setPptUrl(URL.createObjectURL(blob));
-          setError("Received unknown file type. Provided a download link.");
+        // Convert response to blob and create download URL
+        const buffer = await res.arrayBuffer();
+        const blob = new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        });
+        setPptUrl(URL.createObjectURL(blob));
+        setIsComplete(true);
+      } else if (!res.ok) {
+        // Handle error response - try to extract agent's message
+        const text = await res.text();
+        let agentMessage = "";
+        
+        try {
+          // Try to parse as JSON and extract the detail
+          const errorData = JSON.parse(text);
+          if (errorData.detail) {
+            // Extract agent response from the error detail
+            const agentResponseMatch = errorData.detail.match(/Agent response: (.+)$/);
+            if (agentResponseMatch) {
+              agentMessage = agentResponseMatch[1];
+            } else {
+              agentMessage = errorData.detail;
+            }
+          }
+        } catch {
+          // If not JSON, use the text as is
+          agentMessage = text;
         }
+
+        // Display as assistant message (follow-up question)
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: agentMessage || "Something went wrong. Please try again.",
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      } else {
+        // Unexpected response type
+        throw new Error("Unexpected response type from server");
       }
     } catch (err: any) {
       console.error(err);
@@ -86,59 +121,239 @@ export default function Home(): JSX.Element {
     }
   }
 
+  function handleReset() {
+    setMessages([]);
+    setCurrentInput("");
+    setPdfUrl(null);
+    setPptUrl(null);
+    setError(null);
+    setIsComplete(false);
+  }
+
   return (
     <div className="container">
       <main className="card">
-        <h1>OceanAI PPT Generator</h1>
+        <h1 style={{ marginBottom: "1.5rem", fontSize: "2rem", fontWeight: "700" }}>
+          🌊 OceanAI PPT Generator
+        </h1>
 
-        <label className="label">Topic</label>
-        <input
-          className="input"
-          placeholder="Enter a topic..."
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-        />
-
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <button className="btn" onClick={handleGenerate} disabled={loading}>
-            {loading ? "Generating..." : "Generate PPT"}
-          </button>
-          <button
-            className="btn ghost"
-            onClick={() => {
-              setTopic("");
-              setPdfUrl(null);
-              setPptUrl(null);
-              setError(null);
-            }}
-          >
-            Reset
-          </button>
+        {/* Chat Messages */}
+        <div 
+          className="section" 
+          style={{ 
+            maxHeight: "550px", 
+            overflowY: "auto", 
+            marginBottom: "1rem",
+            backgroundColor: "#343541",
+            borderRadius: "12px",
+            position: "relative",
+          }}
+        >
+          {messages.length === 0 ? (
+            <div style={{ 
+              color: "#9ca3af", 
+              textAlign: "center", 
+              padding: "4rem 2rem",
+              fontSize: "1.05rem"
+            }}>
+              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>💬</div>
+              <p style={{ fontWeight: "500", marginBottom: "0.5rem" }}>Welcome to OceanAI PPT Generator</p>
+              <p style={{ fontSize: "0.9rem", color: "#6b7280" }}>
+                Enter a topic to generate your presentation
+              </p>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    padding: "1.5rem 1.25rem",
+                    backgroundColor: msg.role === "user" ? "#343541" : "#444654",
+                    borderBottom: idx < messages.length - 1 ? "1px solid #4a4a5e" : "none",
+                  }}
+                >
+                  <div style={{ 
+                    maxWidth: "48rem",
+                    margin: "0 auto",
+                    display: "flex",
+                    gap: "1.5rem",
+                    alignItems: "flex-start"
+                  }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "6px",
+                      backgroundColor: msg.role === "user" ? "#5b21b6" : "#059669",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      fontSize: "0.875rem",
+                      fontWeight: "700",
+                      color: "#ffffff",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                    }}>
+                      {msg.role === "user" ? "👤" : "🤖"}
+                    </div>
+                    
+                    {/* Message Content */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontSize: "0.8rem", 
+                        fontWeight: "600",
+                        marginBottom: "0.5rem",
+                        color: msg.role === "user" ? "#a78bfa" : "#34d399",
+                        letterSpacing: "0.3px"
+                      }}>
+                        {msg.role === "user" ? "Your Response" : "OceanAI PPT Generator"}
+                      </div>
+                      <div style={{ 
+                        color: "#ececf1",
+                        lineHeight: "1.75",
+                        fontSize: "0.98rem",
+                        whiteSpace: "pre-wrap"
+                      }}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Loading Indicator */}
+              {loading && (
+                <div
+                  style={{
+                    padding: "1.5rem 1.25rem",
+                    backgroundColor: "#444654",
+                  }}
+                >
+                  <div style={{ 
+                    maxWidth: "48rem",
+                    margin: "0 auto",
+                    display: "flex",
+                    gap: "1.5rem",
+                    alignItems: "flex-start"
+                  }}>
+                    <div style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "6px",
+                      backgroundColor: "#059669",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      fontSize: "0.875rem",
+                      fontWeight: "700",
+                      color: "#ffffff",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                    }}>
+                      🤖
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontSize: "0.8rem", 
+                        fontWeight: "600",
+                        marginBottom: "0.5rem",
+                        color: "#34d399",
+                        letterSpacing: "0.3px"
+                      }}>
+                        OceanAI PPT Generator
+                      </div>
+                      <div style={{ 
+                        color: "#ececf1",
+                        lineHeight: "1.75",
+                        fontSize: "0.98rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem"
+                      }}>
+                        <div style={{
+                          width: "20px",
+                          height: "20px",
+                          border: "3px solid #059669",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 1s linear infinite"
+                        }} />
+                        <span>Generating your presentation...</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </>
+          )}
         </div>
 
         {error && <ErrorDisplay message={error} />}
 
-        {pptUrl && (
-          <div className="section">
-            <a className="link" href={pptUrl} download={`presentation-${Date.now()}.pptx`}>
-              Download PPTX
-            </a>
-          </div>
+        {/* Input Area */}
+        {!isComplete && (
+          <>
+            <label className="label">
+              {messages.length === 0 ? "Topic" : "Your response"}
+            </label>
+            <input
+              className="input"
+              placeholder={messages.length === 0 ? "Enter a topic..." : "Type your answer..."}
+              value={currentInput}
+              onChange={(e) => setCurrentInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && !loading) {
+                  handleSendMessage();
+                }
+              }}
+            />
+
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button className="btn" onClick={handleSendMessage} disabled={loading}>
+                {loading ? "Sending..." : "Send"}
+              </button>
+              <button className="btn ghost" onClick={handleReset}>
+                Reset
+              </button>
+            </div>
+          </>
         )}
 
-        {pdfUrl && (
-          <div className="section">
-            <h3>Preview PDF</h3>
-            <PdfViewer pdfUrl={pdfUrl} />
-            <div style={{ marginTop: 8 }}>
-              <a className="link" href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                Open PDF in new tab
-              </a>
-              {" · "}
-              <a className="link" href={pdfUrl} download={`presentation-${Date.now()}.pdf`}>
-                Download PDF
-              </a>
-            </div>
+        {/* Download Section */}
+        {isComplete && (
+          <div className="section" style={{ marginTop: "1rem" }}>
+            <h3 style={{ color: "#388e3c" }}>✓ Presentation Ready!</h3>
+            
+            {pptUrl && (
+              <div style={{ marginBottom: "1rem" }}>
+                <a className="link" href={pptUrl} download={`presentation-${Date.now()}.pptx`}>
+                  Download PPTX
+                </a>
+              </div>
+            )}
+
+            {pdfUrl && (
+              <div>
+                <h3>Preview PDF</h3>
+                <PdfViewer pdfUrl={pdfUrl} />
+                <div style={{ marginTop: 8 }}>
+                  <a className="link" href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                    Open PDF in new tab
+                  </a>
+                  {" · "}
+                  <a className="link" href={pdfUrl} download={`presentation-${Date.now()}.pdf`}>
+                    Download PDF
+                  </a>
+                </div>
+              </div>
+            )}
+
+            <button className="btn" onClick={handleReset} style={{ marginTop: "1rem" }}>
+              Start New Presentation
+            </button>
           </div>
         )}
       </main>
