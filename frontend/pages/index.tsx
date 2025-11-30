@@ -62,7 +62,7 @@ export default function Home(): JSX.Element {
 
       const contentType = res.headers.get("content-type") || "";
 
-      // Check if response is a file (PPTX)
+      // Check if response is a file (PPTX) - when ppt_generated is True
       if (
         contentType.includes("presentation") ||
         contentType.includes("powerpoint") ||
@@ -74,39 +74,48 @@ export default function Home(): JSX.Element {
         };
         setMessages((prev) => [...prev, successMessage]);
 
-        // Convert response to blob and create download URL
-        const buffer = await res.arrayBuffer();
-        const blob = new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        });
+        // Convert response to blob - use response.blob() instead of arrayBuffer for better compatibility
+        const blob = await res.blob();
+        
+        // Verify blob size
+        console.log("PPTX file size:", blob.size, "bytes");
+        if (blob.size === 0) {
+          throw new Error("Received empty file from server");
+        }
+        
         setPptUrl(URL.createObjectURL(blob));
         setIsComplete(true);
+      } else if (contentType.includes("application/json")) {
+        // Handle JSON response - when status is false (follow-up questions)
+        const data: BackendResponse = await res.json();
+        
+        if (!data.status) {
+          // This is a follow-up question from the agent
+          const assistantMessage: Message = {
+            role: "assistant",
+            content: data.content,
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          // Don't set isComplete - user can continue the conversation
+        } else {
+          // Status is true but we got JSON instead of file (shouldn't happen normally)
+          throw new Error("Unexpected response: status is true but no file received");
+        }
       } else if (!res.ok) {
-        // Handle error response - try to extract agent's message
+        // Handle HTTP error responses
         const text = await res.text();
-        let agentMessage = "";
+        let errorMessage = "";
         
         try {
-          // Try to parse as JSON and extract the detail
           const errorData = JSON.parse(text);
-          if (errorData.detail) {
-            // Extract agent response from the error detail
-            const agentResponseMatch = errorData.detail.match(/Agent response: (.+)$/);
-            if (agentResponseMatch) {
-              agentMessage = agentResponseMatch[1];
-            } else {
-              agentMessage = errorData.detail;
-            }
-          }
+          errorMessage = errorData.detail || "Something went wrong. Please try again.";
         } catch {
-          // If not JSON, use the text as is
-          agentMessage = text;
+          errorMessage = text || "Something went wrong. Please try again.";
         }
 
-        // Display as assistant message (follow-up question)
         const assistantMessage: Message = {
           role: "assistant",
-          content: agentMessage || "Something went wrong. Please try again.",
+          content: errorMessage,
         };
         setMessages((prev) => [...prev, assistantMessage]);
       } else {
