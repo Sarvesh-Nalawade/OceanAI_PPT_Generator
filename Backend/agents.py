@@ -1,8 +1,11 @@
+from typing import List
 import os
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
+from pydantic import BaseModel, Field
 from langchain.agents import create_agent
+from langchain.agents.structured_output import ToolStrategy
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -12,13 +15,14 @@ DOTENV_PATH = os.path.join(SCRIPT_DIR, '.env')
 load_dotenv(dotenv_path=DOTENV_PATH)
 
 # llm = ChatGoogleGenerativeAI(model="models/gemini-3-pro-preview", temperature=0.7)
-llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-pro", temperature=0.7)
+llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.7)
 
 PPT_FILE_NAME = "/tmp/generated_ppt_code.py"
 
 # ## PPT code gen:
 
-CONTEXT_DOCS_PATH = os.path.join(SCRIPT_DIR, "pptx_docs", "merged_docs_edit.md")
+CONTEXT_DOCS_PATH = os.path.join(
+    SCRIPT_DIR, "pptx_docs", "merged_docs_edit.md")
 with open(CONTEXT_DOCS_PATH, "r") as f:
     CONTEXT_DOCS = f.read()
 
@@ -194,13 +198,23 @@ def debug_code_tool(error_message: str, ppt_topic: str) -> str:
         return f"Error extracting code: {str(e)}"
 
 
-# ## Final Boss:
+# Agent
+
+class PPTAgentResp(BaseModel):
+    ppt_generated: bool = Field(
+        ..., description="Boolean: True = This is last response and PPT generation is done. False = There is some follow up question or error fixing needed.")
+    content: str = Field(
+        ..., description="If ppt_generated is False, this field contains the follow up question or error details. If ppt_generated is True, this field contains 'Done' or 'Failed'.")
+
+
 ppt_maker_agent = create_agent(
     name="PPT Maker Agent",
     model=llm,
     system_prompt="You are an expert in making PPTs for any given topic. You can ask follow up questions to clarify user requirements before generating the PPT. You will be provided with some tools to help you generate the PPTs effectively. You can use them multiple times as needed. At the end of your work, return a string sating `Done` or `Failed`.",
-    tools=[create_ppt_tool, execute_code_tool, debug_code_tool]
+    tools=[create_ppt_tool, execute_code_tool, debug_code_tool],
+    response_format=ToolStrategy(PPTAgentResp)
 )
+
 
 # agent will need:
 # 1. topic for ppt, 2. any other details, 3. slide count
@@ -211,12 +225,24 @@ store = {}
 
 
 def get_session_history(session_id: str | int) -> BaseChatMessageHistory:
+    session_id = int(session_id)
     if session_id not in store:
         store[session_id] = ChatMessageHistory()
     return store[session_id]
 
 
-get_session_history(15).messages
+def get_chat_history(session_id: str | int) -> List:
+    history = get_session_history(session_id)
+    # Convert messages to a serializable format
+    messages = []
+    for msg in history.messages:
+        if isinstance(msg, HumanMessage):
+            messages.append({"role": "human", "content": msg.content})
+        elif isinstance(msg, AIMessage):
+            messages.append({"role": "ai", "content": msg.content})
+        else:
+            messages.append({"role": "unknown", "content": str(msg)})
+    return messages
 
 
 def add_message_to_history(session_id: str | int, message: str, type: str) -> None:
@@ -228,42 +254,29 @@ def add_message_to_history(session_id: str | int, message: str, type: str) -> No
         history.add_ai_message(message=message)
 
 
-add_message_to_history(15, "Hello", "human")
-get_session_history(15).messages
+def ask_something(session_id: str | int, user_input: str) -> PPTAgentResp:
+    """Main function to continue any past chat session or start a new one.
 
-
-def ask_something(session_id: str | int, user_input: str) -> str:
-    """Main function to continue any past chat session or start a new one."""
+    Arguments:
+        session_id (str | int): Unique identifier for the chat session.
+        user_input (str): The user's input message. Or follow up answer.
+    """
     history = get_session_history(session_id)
 
-    final_response = ppt_maker_agent.invoke(
+    agent_response = ppt_maker_agent.invoke(
         input={
             "messages": history.messages + [HumanMessage(content=user_input)]
         }  # type: ignore
     )
 
-    # print(final_response)
-    final_response = final_response['messages'][-1]
-    final_response = final_response.text
+    final_response: PPTAgentResp = agent_response['structured_response']
 
     # Update history
     add_message_to_history(session_id, user_input, "human")
-    add_message_to_history(session_id, final_response, "ai")
+    add_message_to_history(session_id, final_response.content, "ai")
 
     # Answer:
     return final_response
 
 
 # ask_something(10, "Hello")
-
-# Markdown(
-#     ask_something(10, "Can we work on Programming Languages?")
-# )
-
-# Markdown(
-#     ask_something(10, "I want main 3-4 languages. 9 slides. My main purpose is to see how popularity has changed over time. What is their market share? Can you first finalize the languages with me?")
-# )
-
-# Markdown(ask_something(10, "Consider C++ also. Now generate"))
-
-# get_session_history(10).messages

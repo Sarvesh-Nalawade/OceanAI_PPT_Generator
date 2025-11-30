@@ -1,8 +1,10 @@
+from agents import get_chat_history
+from fastapi import Query
 import uvicorn
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from agents import ask_something
+from agents import ask_something, PPTAgentResp, PPT_FILE_NAME
 import os
 
 app = FastAPI()
@@ -23,31 +25,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PPT_FILE_PATH = "/tmp/output.pptx"
+
 
 @app.post("/generate")
 async def generate_presentation(topic: str = Form(...)):
     """
     Receives a topic, generates a presentation, and returns it.
     """
-    session_id = 1 # Using a single session for now
+    session_id = 1  # Using a single session for now
     try:
         # This function will trigger the agent chain which creates and saves the pptx file.
-        result = ask_something(session_id, f"Generate a ppt on topic: {topic}")
+        result = ask_something(session_id, topic)
 
-        if "done" in result.lower() and os.path.exists(PPT_FILE_PATH):
-             # The agent is expected to save the file as `output.pptx` in the project root.
-            return FileResponse(
-                path=PPT_FILE_PATH,
-                filename="presentation.pptx",
-                media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            )
+        if result.ppt_generated:
+            if os.path.exists(PPT_FILE_NAME):
+                # Return the pptx file as a response
+                return FileResponse(
+                    PPT_FILE_NAME,
+                    media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    filename="output.pptx",
+                    headers={"status": "true", "content": str(result.content)}
+                )
+            else:
+                raise HTTPException(
+                    status_code=500, detail="Presentation file was not found after generation.")
         else:
-            # If the agent did not confirm completion or the file doesn't exist
-            raise HTTPException(status_code=500, detail=f"Backend agent failed to generate the presentation. Agent response: {result}")
+            return {"status": False, "content": result.content}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
+
+# New endpoint to get session history by session_id
+
+
+@app.get("/session_history")
+async def get_session_history_endpoint(session_id: int = Query(..., description="Session ID")):
+    """
+    Returns the session history for a given session_id.
+    """
+    try:
+        history = get_chat_history(session_id)
+        return {"session_id": session_id, "history": history}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Could not fetch session history: {str(e)}")
+        
+        
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
