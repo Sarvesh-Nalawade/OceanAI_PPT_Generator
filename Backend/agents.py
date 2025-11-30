@@ -27,11 +27,12 @@ llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-pro", temperature=0.7, api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Create a local temp directory if not exists
-if not os.path.exists("temp"):
-    os.makedirs("temp")
+TEMP_DIR = os.getenv("TEMP_DIR", "/tmp")
+if not os.path.exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR)
 
-PPT_CODE_FILE = "./temp/generated_ppt_code.py"
-PPT_PPT_FILE = "./temp/generated_presentation.pptx"
+PPT_CODE_FILE = os.getenv("PPT_CODE_FILE", "/tmp/generated_ppt_code.py")
+PPT_PPT_FILE = os.getenv("PPT_PPT_FILE", "/tmp/generated_presentation.pptx")
 
 # PPTX_CODE = "/tmp/generated_ppt_code.py"
 # PPT_FILE_NAME = "/tmp/output.pptx"
