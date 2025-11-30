@@ -4,8 +4,10 @@ import uvicorn
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from agents import ask_something, PPTAgentResp, PPT_FILE_NAME
+from agents import ask_something, PPTAgentResp, PPT_PPT_FILE
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
 
@@ -38,10 +40,10 @@ async def generate_presentation(topic: str = Form(...)):
         result = ask_something(session_id, topic)
 
         if result.ppt_generated:
-            if os.path.exists(PPT_FILE_NAME):
+            if os.path.exists(PPT_PPT_FILE):
                 # Return the pptx file as a response
                 return FileResponse(
-                    PPT_FILE_NAME,
+                    PPT_PPT_FILE,
                     media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                     filename="output.pptx",
                     headers={"status": "true", "content": str(result.content)}

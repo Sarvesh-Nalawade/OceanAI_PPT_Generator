@@ -1,59 +1,77 @@
-from typing import List
-import os
-from langchain_core.messages import HumanMessage, AIMessage
-from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory
 from pydantic import BaseModel, Field
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
+
+
+from langchain.tools import tool
 from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.tools import tool
-from langchain_google_genai import ChatGoogleGenerativeAI
+
+import os
+import sys
+from typing import List
 from dotenv import load_dotenv
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DOTENV_PATH = os.path.join(SCRIPT_DIR, '.env')
-load_dotenv(dotenv_path=DOTENV_PATH)
+load_dotenv()
+
+
+# SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+# DOTENV_PATH = os.path.join(SCRIPT_DIR, '.env')
+# load_dotenv(dotenv_path=DOTENV_PATH)
 
 # llm = ChatGoogleGenerativeAI(model="models/gemini-3-pro-preview", temperature=0.7)
-llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.7)
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-pro", temperature=0.7, api_key=os.getenv("GOOGLE_API_KEY"))
 
-PPT_FILE_NAME = "/tmp/generated_ppt_code.py"
+# Create a local temp directory if not exists
+if not os.path.exists("temp"):
+    os.makedirs("temp")
+
+PPT_CODE_FILE = "./temp/generated_ppt_code.py"
+PPT_PPT_FILE = "./temp/generated_presentation.pptx"
+
+# PPTX_CODE = "/tmp/generated_ppt_code.py"
+# PPT_FILE_NAME = "/tmp/output.pptx"
 
 # ## PPT code gen:
 
-CONTEXT_DOCS_PATH = os.path.join(
-    SCRIPT_DIR, "pptx_docs", "merged_docs_edit.md")
+CONTEXT_DOCS_PATH = os.path.join("pptx_docs", "merged_docs_edit.md")
 with open(CONTEXT_DOCS_PATH, "r") as f:
     CONTEXT_DOCS = f.read()
 
 # CONTEXT_DOCS[:75]
+ppt_generate_sys_prompt = """You are an assistant that generates Python code using the python-pptx library.
+Your task: Create a complete Python script that builds a PowerPoint presentation about the topic: "{user_query}"
+
+# Requirements:
+1. The presentation must contain {target_slides} slides.
+2. Use only features supported by python-pptx.
+3. Slides must include:
+    - Title and content text
+    - At least **one table**
+    - A **bar chart**
+    - A **pie chart**
+    - (Optional) another chart type supported by python-pptx
+4. For images:
+    - Do NOT embed real images.
+    - Insert placeholder rectangles OR image placeholders.
+    - Add captions/alt-text describing the intended image (e.g., "Image: workflow diagram here").
+5. Structure code cleanly:
+    - Import all needed modules.
+    - Create presentation, slides, chart data, tables, and placeholders.
+6. PPT file:
+    - Save output as `{pptx_file}`. You must follow exactly this filename.
+    - After saving, print "Presentation `{pptx_file}` created successfully."
+
+# Context
+{context_docs_dump}
+"""
 
 ppt_generate_template = ChatPromptTemplate.from_messages([
-    ("system", """You are an assistant that generates Python code using the python-pptx library.
-    Your task: Create a complete Python script that builds a PowerPoint presentation about the topic: "{user_query}"
-
-    # Requirements:
-    1. The presentation must contain {target_slides} slides.
-    2. Use only features supported by python-pptx.
-    3. Slides must include:
-        - Title and content text
-        - At least **one table**
-        - A **bar chart**
-        - A **pie chart**
-        - (Optional) another chart type supported by python-pptx
-    4. For images:
-        - Do NOT embed real images.
-        - Insert placeholder rectangles OR image placeholders.
-        - Add captions/alt-text describing the intended image (e.g., "Image: workflow diagram here").
-    5. Structure code cleanly:
-        - Import all needed modules.
-        - Create presentation, slides, chart data, tables, and placeholders.
-        - Save output as `/tmp/output.pptx`.
-        - After saving, print "Presentation '/tmp/output.pptx' created successfully."
-
-    # Context
-    {context_docs_dump}
-    """),
+    ("system", ppt_generate_sys_prompt),
     ("user",
      "Please generate a ppt on topic: `{user_query}`. Details: {other_details}."),
 ])
@@ -89,9 +107,10 @@ def create_ppt_tool(topic: str, others: str | None, slide_count: int | None) -> 
 
     resp = ppt_generation_chain.invoke({  # type: ignore
         "user_query": topic,
-        "target_slides": f"at least {slide_count}",
+        "target_slides": f"{slide_count}",
         "context_docs_dump": CONTEXT_DOCS,
-        "other_details": others if others else "Nothing."
+        "other_details": others if others else "Nothing.",
+        "pptx_file": PPT_PPT_FILE
     })
     saved_resp = resp  # debugging purpose
     resp = resp.text
@@ -117,13 +136,14 @@ def execute_code_tool(code: str) -> str:
     Returns:
         str: The output message from the execution.
     """
-    with open(PPT_FILE_NAME, "w", encoding="utf-8") as f:
+    with open(PPT_CODE_FILE, "w", encoding="utf-8") as f:
         f.write(code)
 
     import subprocess
     try:
         result = subprocess.run(
-            ["python", PPT_FILE_NAME],
+            # ["python", PPT_FILE_NAME],
+            [sys.executable, PPT_CODE_FILE],
             capture_output=True,
             text=True,
             check=True
@@ -176,7 +196,7 @@ def debug_code_tool(error_message: str, ppt_topic: str) -> str:
         str: New code to save and execute.
     """
     wrong_code = ""
-    with open(PPT_FILE_NAME, "r", encoding="utf-8") as f:
+    with open(PPT_CODE_FILE, "r", encoding="utf-8") as f:
         wrong_code = f.read()
 
     resp = code_debug_chain.invoke({  # type: ignore
@@ -210,9 +230,9 @@ class PPTAgentResp(BaseModel):
 ppt_maker_agent = create_agent(
     name="PPT Maker Agent",
     model=llm,
-    system_prompt="You are an expert in making PPTs for any given topic. You can ask follow up questions to clarify user requirements before generating the PPT. You will be provided with some tools to help you generate the PPTs effectively. You can use them multiple times as needed. At the end of your work, return a string sating `Done` or `Failed`.",
+    system_prompt="You are an expert in making PPTs for any given topic. You can ask follow up questions to clarify user requirements before generating the PPT. You will be provided with some tools to help you generate the PPTs effectively. You can use them multiple times as needed. At the end of your work, return the response to user properly.",
     tools=[create_ppt_tool, execute_code_tool, debug_code_tool],
-    response_format=ToolStrategy(PPTAgentResp)
+    response_format=ToolStrategy(PPTAgentResp),
 )
 
 
@@ -254,7 +274,7 @@ def add_message_to_history(session_id: str | int, message: str, type: str) -> No
         history.add_ai_message(message=message)
 
 
-def ask_something(session_id: str | int, user_input: str) -> PPTAgentResp:
+def ask_something(session_id: str | int, user_input: str, verbose: bool = False) -> PPTAgentResp:
     """Main function to continue any past chat session or start a new one.
 
     Arguments:
@@ -266,7 +286,8 @@ def ask_something(session_id: str | int, user_input: str) -> PPTAgentResp:
     agent_response = ppt_maker_agent.invoke(
         input={
             "messages": history.messages + [HumanMessage(content=user_input)]
-        }  # type: ignore
+        },  # type: ignore
+        verbose=verbose
     )
 
     final_response: PPTAgentResp = agent_response['structured_response']
@@ -279,4 +300,8 @@ def ask_something(session_id: str | int, user_input: str) -> PPTAgentResp:
     return final_response
 
 
-# ask_something(10, "Hello")
+if __name__ == "__main__":
+    # ans = ask_something(10, "Hello")
+    ans = ask_something(
+        session_id=10, verbose=True, user_input="No counter question, just one simple page saying 'please!!!'")
+    print(ans.ppt_generated, ans.content)
