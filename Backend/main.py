@@ -15,10 +15,9 @@ app = FastAPI()
 
 # Configure CORS
 origins = [
-    "http://localhost:3000",  # Allow frontend origin
-    "https://ocean-ai-ppt-generator-5883.vercel.app",
-    "https://ocean-ai-ppt-generator-tbhc.vercel.app",
-    "https://ocean-ai-ppt-generator.vercel.app/",
+    "http://localhost:3000",  # Local frontend
+    "https://ocean-ai-ppt-generator.vercel.app",  # Production frontend
+    "https://ocean-ai-ppt-generator-c3o1.vercel.app",  # Production backend (for self-calls if needed)
 ]
 
 app.add_middleware(
