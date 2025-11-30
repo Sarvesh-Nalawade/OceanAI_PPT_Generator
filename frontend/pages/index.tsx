@@ -25,7 +25,7 @@ export default function Home(): JSX.Element {
   const [isComplete, setIsComplete] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://ocean-ai-ppt-generator-c3o1.vercel.app";
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
