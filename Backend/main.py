@@ -1,3 +1,4 @@
+from datetime import datetime
 from agents import get_chat_history
 from fastapi import Query
 import uvicorn
@@ -8,6 +9,7 @@ from agents import ask_something, PPTAgentResp, PPT_PPT_FILE
 import os
 from dotenv import load_dotenv
 load_dotenv()
+
 
 app = FastAPI()
 
@@ -27,6 +29,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the PPT Generation API",
+            "timestamp": datetime.utcnow().isoformat() + "Z"}
 
 
 @app.post("/generate")
@@ -73,7 +80,7 @@ async def get_session_history_endpoint(session_id: int = Query(..., description=
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Could not fetch session history: {str(e)}")
-        
-        
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
